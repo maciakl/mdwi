@@ -55,3 +55,37 @@ Mdwi uses Pandoc to convert markdown to HTML because it exists, it's mature and 
 ## Installation
 
 
+There are few different ways:
+
+### Platform Independent
+
+ Install via `go`:
+ 
+    go install github.com/maciakl/mdwi@latest
+
+### Linux
+
+On Linux (requires `wget` & `unzip`, installs to `/usr/local/bin`):
+
+    p="mdwi" && wget -qN "https://github.com/maciakl/${p}/releases/latest/download/${p}_lin.zip" && unzip -oq ${p}_lin.zip && rm -f ${p}_lin.zip && chmod +x ${p} && sudo mv ${p} /usr/local/bin
+
+To uninstall, simply delete it:
+
+    rm -f /usr/local/bin/mdwi
+
+### Windows
+
+On Windows, this tool is distributed via `scoop` (see [scoop.sh](https://scoop.sh)).
+
+ First, you need to add my bucket:
+
+    scoop bucket add maciak https://github.com/maciakl/bucket
+    scoop update
+
+ Next simply run:
+ 
+    scoop install mdwi
+
+If you don't want to use `scoop` you can simply download the executable from the release page and extract it somewhere in your path.
+
+
