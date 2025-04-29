@@ -4,13 +4,14 @@ import (
 "os"
 "fmt"
 "regexp"
+"net/url"
 "os/exec"
 "path/filepath"
 
 cp "github.com/otiai10/copy"
 )
 
-const version = "0.2.0"
+const version = "0.2.1"
 
 func main() {
 
@@ -54,6 +55,8 @@ func pandocInstalled() bool {
 }
 
 func generateWiki() {
+
+	fmt.Println("Generating wiki using mdwi version", version, "...")
 
     // check if a _site directory exists
     _, err := os.Stat("_site")
@@ -124,6 +127,8 @@ func generateWiki() {
         outputFile := file[:len(file)-3] + ".html"
         outputPath := filepath.Join("_site", outputFile)
 
+		
+
         cmd := exec.Command("pandoc", "--standalone", "--toc", "--css=style.css", "--to=html5", "-o", outputPath, file)
         err := cmd.Run()
 
@@ -137,7 +142,7 @@ func generateWiki() {
         
         // add the file to the list
         if file != "index.md" {
-            list_txt += fmt.Sprintf("- [%s](%s)\n", file[:len(file)-3], outputFile)
+            list_txt += fmt.Sprintf("- [%s](%s)\n", file[:len(file)-3], url.PathEscape(outputFile))
         }
     }
 
@@ -187,7 +192,7 @@ func generateWiki() {
 
         contentStr = re.ReplaceAllStringFunc(contentStr, func(match string) string {
             name := match[2 : len(match)-2]
-            link := fmt.Sprintf("<a href=\"%s.html\">%s</a>", name, name)
+            link := fmt.Sprintf("<a href=\"%s.html\">%s</a>", url.PathEscape(name), name)
             return link
         })
 
