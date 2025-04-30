@@ -1,254 +1,235 @@
-package main    
+package main
 
 import (
-"os"
-"fmt"
-"regexp"
-"net/url"
-"os/exec"
-"path/filepath"
+	"fmt"
+	"net/url"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
 
-cp "github.com/otiai10/copy"
+	cp "github.com/otiai10/copy"
 )
 
-const version = "0.2.1"
+const version = "0.2.2"
 
 func main() {
 
-    if len(os.Args) > 1 {
-        switch os.Args[1] {
-        case "-v", "--version":
-            Version()
-        case "-h", "--help":
-            Usage()
-        default:
-            Usage()
-        } 
-    } else {
-        if !pandocInstalled() {
-            fmt.Fprintln(os.Stderr, "Error: pandoc is not installed.")
-            os.Exit(1)
-        }
-        generateWiki()
-    }
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "-v", "--version":
+			Version()
+		case "-h", "--help":
+			Usage()
+		default:
+			Usage()
+		}
+	} else {
+		if !pandocInstalled() {
+			fmt.Fprintln(os.Stderr, "Error: pandoc is not installed.")
+			os.Exit(1)
+		}
+		generateWiki()
+	}
 }
 
 func Version() {
-    fmt.Println(filepath.Base(os.Args[0]), "version", version)
-    os.Exit(0)
+	fmt.Println(filepath.Base(os.Args[0]), "version", version)
+	os.Exit(0)
 }
 
 func Usage() {
-    fmt.Println("Usage:", filepath.Base(os.Args[0]), "[options]")
-    fmt.Println("Options:")
-    fmt.Println("  -v, --version    Print version information and exit")
-    fmt.Println("  -h, --help       Print this message and exit")
-    os.Exit(0)
+	fmt.Println("Usage:", filepath.Base(os.Args[0]), "[options]")
+	fmt.Println("Options:")
+	fmt.Println("  -v, --version    Print version information and exit")
+	fmt.Println("  -h, --help       Print this message and exit")
+	os.Exit(0)
 }
 
 func pandocInstalled() bool {
-    _, err := exec.LookPath("pandoc")
-    if err != nil {
-        return false
-    }
-    return true
+	_, err := exec.LookPath("pandoc")
+	if err != nil {
+		return false
+	}
+	return true
 }
 
 func generateWiki() {
 
 	fmt.Println("Generating wiki using mdwi version", version, "...")
 
-    // check if a _site directory exists
-    _, err := os.Stat("_site")
-    if os.IsNotExist(err) {
-        // create the _site directory
-        err := os.Mkdir("_site", 0755)
-        if err != nil {
-            fmt.Fprintln(os.Stderr, "Error (mkdir):", err)
-            os.Exit(1)
-        }
-        fmt.Println("Created _site directory")
-    } else if err != nil {
-        fmt.Fprintln(os.Stderr, "Error (dir check):", err)
-        os.Exit(1)
-    } else {
-        // delete the _site directory and re-create it
-        err := os.RemoveAll("_site")
-        if err != nil {
-            fmt.Fprintln(os.Stderr, "Error (dir remove):", err)
-            os.Exit(1)
-        }
-        err = os.Mkdir("_site", 0755)
-        if err != nil {
-            fmt.Fprintln(os.Stderr, "Error (mkdir):", err)
-            os.Exit(1)
-        }
-        fmt.Println("Removed and re-created _site directory")
-    }
-
-
-    // write the default stylesheet to _site/style.css
-    stylesheet := generateStylesheetString()
-    err = os.WriteFile("_site/style.css", []byte(stylesheet), 0644)
-    if err != nil {
-        fmt.Fprintln(os.Stderr, "Error (css write):", err)
-        os.Exit(1)
-    } else {
-		fmt.Println("Created _site/style.css")
+	// check if a _site directory exists
+	_, err := os.Stat("_site")
+	if os.IsNotExist(err) {
+		// create the _site directory
+		err := os.Mkdir("_site", 0755)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error (mkdir):", err)
+			os.Exit(1)
+		}
+		fmt.Println("Created _site directory")
+	} else if err != nil {
+		fmt.Fprintln(os.Stderr, "Error (dir check):", err)
+		os.Exit(1)
+	} else {
+		// delete the _site directory and re-create it
+		err := os.RemoveAll("_site")
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error (dir remove):", err)
+			os.Exit(1)
+		}
+		err = os.Mkdir("_site", 0755)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error (mkdir):", err)
+			os.Exit(1)
+		} else {
+			fmt.Println("Removed and re-created _site directory")
+		}
 	}
+
+	// write the default stylesheet to _site/style.css
+	stylesheet := generateStylesheetString()
+	writeFile("_site/style.css", stylesheet, "Created _site/style.css", "css write")
 
 	// write the default favicon to _site/favicon.svg
 	favicon := generateFavicon()
-	err = os.WriteFile("_site/favicon.svg", []byte(favicon), 0644)
+	writeFile("_site/favicon.svg", favicon, "Created _site/favicon.svg", "favicon write")
+
+	// remove file list.md if it exists
+	_ = os.Remove("_list.md")
+	fmt.Println("Removed _list.md")
+
+	// find all markdown files in the current directory
+	files, err := filepath.Glob("*.md")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error (favicon write):", err)
+		fmt.Fprintln(os.Stderr, "Error (md find):", err)
 		os.Exit(1)
-	} else {
-		fmt.Println("Created _site/favicon.svg")
 	}
 
-    // remove file list.md if it exists
-    _ = os.Remove("_list.md")
-    fmt.Println("Removed _list.md")
+	list_txt := "# List of Pages\n\n"
 
-    // find all markdown files in the current directory
-    files, err := filepath.Glob("*.md")
-    if err != nil {
-        fmt.Fprintln(os.Stderr, "Error (md find):", err)
-        os.Exit(1)
-    }
+	// iterate over the files and convert each with pandoc
+	for _, file := range files {
 
-    list_txt := "# List of Pages\n\n"
+		outputFile := file[:len(file)-3] + ".html"
+		outputPath := filepath.Join("_site", outputFile)
 
-    // iterate over the files and convert each with pandoc
-    for _, file := range files {
+		pandocFile(outputPath, file)
 
-
-        outputFile := file[:len(file)-3] + ".html"
-        outputPath := filepath.Join("_site", outputFile)
-
-		
-
-        cmd := exec.Command("pandoc", "--standalone", "--toc", "--css=style.css", "--to=html5", "-o", outputPath, file)
-        err := cmd.Run()
-
-        if err != nil {
-            out, _ := cmd.CombinedOutput()
-            fmt.Fprintln(os.Stderr, "Error (pandoc):", err)
-            fmt.Fprintln(os.Stderr, string(out))
-            os.Exit(1)
-        }
-        fmt.Println("Converted", file, "to", outputPath)
-        
-        // add the file to the list
-        if file != "index.md" {
-            list_txt += fmt.Sprintf("- [%s](%s)\n", file[:len(file)-3], url.PathEscape(outputFile))
-        }
-    }
-
-    // write the list to list.md
-    err = os.WriteFile("_list.md", []byte(list_txt), 0644)
-    if err != nil {
-        fmt.Fprintln(os.Stderr, "Error (list write):", err)
-        os.Exit(1)
-    } else {
-		fmt.Println("Created _list.md")
+		// add the file to the list
+		if file != "index.md" {
+			list_txt += fmt.Sprintf("- [%s](%s)\n", file[:len(file)-3], url.PathEscape(outputFile))
+		}
 	}
 
-    // convert list.md to HTML
-    listOutputFile := "list.html"
-    listOutputPath := filepath.Join("_site", listOutputFile)
-    cmd := exec.Command("pandoc", "--standalone", "--toc", "--css=style.css", "--to=html5", "-o", listOutputPath, "_list.md")
-    err = cmd.Run()
-    if err != nil {
-        out, _ := cmd.CombinedOutput()
-        fmt.Fprintln(os.Stderr, "Error (pandoc):", err)
-        fmt.Fprintln(os.Stderr, string(out))
-        os.Exit(1)
-    }
-    fmt.Println("Converted _list.md to", listOutputPath)
+	// write the list to list.md
+	writeFile("_list.md", list_txt, "Created _list.md", "list write")
 
+	// convert list.md to HTML
+	listOutputFile := "list.html"
+	listOutputPath := filepath.Join("_site", listOutputFile)
 
-    // get all html files in the _site directory
-    htmlFiles, err := filepath.Glob(filepath.Join("_site", "*.html"))
-    if err != nil {
-        fmt.Fprintln(os.Stderr, "Error (html find):", err)
-        os.Exit(1)
-    }
+	pandocFile(listOutputPath, "_list.md")
 
-    // iterate over the html files and convert {{Name}} into <a href="Name.html">Name</a>
-    for _, file := range htmlFiles {
+	// get all html files in the _site directory
+	htmlFiles, err := filepath.Glob(filepath.Join("_site", "*.html"))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error (html find):", err)
+		os.Exit(1)
+	}
 
-        content, err := os.ReadFile(file)
-        if err != nil {
-            fmt.Fprintln(os.Stderr, "Error (html read):", err)
-            os.Exit(1)
-        }
+	// iterate over the html files and convert {{Name}} into <a href="Name.html">Name</a>
+	for _, file := range htmlFiles {
 
-        contentStr := string(content)
+		contentStr := readFile(file)
 
-        //re := regexp.MustCompile(`\{\{(\w+)\}\}`)
+		//re := regexp.MustCompile(`\{\{(\w+)\}\}`)
 		re := regexp.MustCompile(`\{\{([a-zA-Z0-9_ ]+)\}\}`)
 
-        contentStr = re.ReplaceAllStringFunc(contentStr, func(match string) string {
-            name := match[2 : len(match)-2]
-            link := fmt.Sprintf("<a href=\"%s.html\">%s</a>", url.PathEscape(name), name)
-            return link
-        })
+		contentStr = re.ReplaceAllStringFunc(contentStr, func(match string) string {
+			name := match[2 : len(match)-2]
+			link := fmt.Sprintf("<a href=\"%s.html\">%s</a>", url.PathEscape(name), name)
+			return link
+		})
 
-        // inject custom HTML into the page
+		// inject custom HTML into the page
 		contentStr = injectFavicon(contentStr)
-        contentStr = injectNav(contentStr)
-        contentStr = injectFooter(contentStr)
+		contentStr = injectNav(contentStr)
+		contentStr = injectFooter(contentStr)
 
+		// write the modified content back to the file
+		writeFile(file, contentStr, "Updated "+file, "html inject")
+	}
 
-        // write the modified content back to the file
-        err = os.WriteFile(file, []byte(contentStr), 0644)
-        if err != nil {
-            fmt.Fprintln(os.Stderr, "Error (html write):", err)
-            os.Exit(1)
-        }
-        
-    }
+	// copy all the image files to the _site directory
+	copyFiles("*.png")
+	copyFiles("*.jpg")
 
-    // copy all the image files to the _site directory
-    imgFiles, err := filepath.Glob("*.png")
-    if err != nil {
-        fmt.Fprintln(os.Stderr, "Error (png find):", err)
-        os.Exit(1)
-    }
-    for _, file := range imgFiles {
-        src := file
-        dst := filepath.Join("_site", file)
-        err := cp.Copy(src, dst)
-        if err != nil {
-            fmt.Fprintln(os.Stderr, "Error (png copy):", err)
-            os.Exit(1)
-        }
-        fmt.Println("Copied", file, "to", dst)
-    }
+	fmt.Println("Done!")
+}
 
-    imgFiles, err = filepath.Glob("*.jpg")
-    if err != nil {
-        fmt.Fprintln(os.Stderr, "Error (jpg find):", err)
-        os.Exit(1)
-    }
-    for _, file := range imgFiles {
-        src := file
-        dst := filepath.Join("_site", file)
-        err := cp.Copy(src, dst)
-        if err != nil {
-            fmt.Fprintln(os.Stderr, "Error (png copy):", err)
-            os.Exit(1)
-        }
-        fmt.Println("Copied", file, "to", dst)
-    }
+func writeFile(path string, content string, success_msg string, error_msg string) {
 
+	err := os.WriteFile(path, []byte(content), 0644)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error (", error_msg, "):", err)
+		os.Exit(1)
+	} else {
+		fmt.Println(success_msg)
+	}
+}
+
+func readFile(path string) string {
+
+	content, err := os.ReadFile(path)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error (html read):", err)
+		os.Exit(1)
+	}
+
+	return string(content)
+}
+
+func copyFiles(filetype string) {
+
+	// copy all the image files to the _site directory
+	imgFiles, err := filepath.Glob(filetype)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error (", filetype, "find):", err)
+		os.Exit(1)
+	}
+
+	for _, file := range imgFiles {
+		src := file
+		dst := filepath.Join("_site", file)
+		err := cp.Copy(src, dst)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error (", filetype, "copy):", err)
+			os.Exit(1)
+		} else {
+			fmt.Println("Copied", file, "to", dst)
+		}
+	}
+}
+
+func pandocFile(outputPath string, file string) {
+
+	cmd := exec.Command("pandoc", "--standalone", "--toc", "--css=style.css", "--to=html5", "-o", outputPath, file)
+	err := cmd.Run()
+
+	if err != nil {
+		out, _ := cmd.CombinedOutput()
+		fmt.Fprintln(os.Stderr, "Error (pandoc):", err)
+		fmt.Fprintln(os.Stderr, string(out))
+		os.Exit(1)
+	} else {
+		fmt.Println("Converted", file, "to", outputPath)
+	}
 }
 
 func injectNav(content string) string {
-    // Define the SVG icon as a string
-    homeIconSVG := `
+	// Define the SVG icon as a string
+	homeIconSVG := `
     <div class="links">
         <ul>
            <li><a href="index.html">🏠 Home</a></li>
@@ -258,11 +239,10 @@ func injectNav(content string) string {
 
     <h4>Table of Contents</h4>`
 
-
-    // Use a regex to find the <body> tag
-    re := regexp.MustCompile(`(?i)<nav[^>]*>`)
-    // Replace it with the <body> tag and the SVG icon
-    return re.ReplaceAllString(content, `$0`+homeIconSVG)
+	// Use a regex to find the <body> tag
+	re := regexp.MustCompile(`(?i)<nav[^>]*>`)
+	// Replace it with the <body> tag and the SVG icon
+	return re.ReplaceAllString(content, `$0`+homeIconSVG)
 }
 
 func injectFavicon(content string) string {
@@ -276,8 +256,8 @@ func injectFavicon(content string) string {
 }
 
 func injectFooter(content string) string {
-    // Define the footer content
-    footer := `
+	// Define the footer content
+	footer := `
     <footer>
     <p>generated by <a href="https://github.com/maciakl/mdwi">mdwi</a> <small>%s</small></p>
     </footer>`
@@ -285,10 +265,10 @@ func injectFooter(content string) string {
 	// inject verson
 	footer = fmt.Sprintf(footer, version)
 
-    // Use a regex to find the closing </body> tag
-    re := regexp.MustCompile(`(?i)</body>`)
-    // Replace it with the closing </body> tag and the footer
-    return re.ReplaceAllString(content, footer+`$0`)
+	// Use a regex to find the closing </body> tag
+	re := regexp.MustCompile(`(?i)</body>`)
+	// Replace it with the closing </body> tag and the footer
+	return re.ReplaceAllString(content, footer+`$0`)
 }
 
 func generateFavicon() string {
@@ -298,8 +278,8 @@ func generateFavicon() string {
 }
 
 func generateStylesheetString() string {
-    // create a default stylesheet
-    stylesheet := `
+	// create a default stylesheet
+	stylesheet := `
 
 body {
     font-family: "Avenir Next", Helvetica, Arial, sans-serif;
@@ -530,5 +510,5 @@ footer {
     }
 }`
 
-    return stylesheet
+	return stylesheet
 }
