@@ -11,9 +11,10 @@ import (
 	cp "github.com/otiai10/copy"
 )
 
-const version = "0.2.2"
+const version = "0.3.0"
 
 func main() {
+
 
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
@@ -21,6 +22,21 @@ func main() {
 			Version()
 		case "-h", "--help":
 			Usage()
+		case "-s", "--standalone":
+			if len(os.Args) < 3 {
+				fmt.Fprintln(os.Stderr, "Error: no input file specified for standalone mode.")
+				os.Exit(1)
+			}
+			if !pandocInstalled() {
+				fmt.Fprintln(os.Stderr, "Error: pandoc is not installed.")
+				os.Exit(1)
+			}
+			inputFile := os.Args[2]
+			if _, err := os.Stat(inputFile); os.IsNotExist(err) {
+				fmt.Fprintln(os.Stderr, "Error: input file does not exist:", inputFile)
+				os.Exit(1)
+			}
+			generateStandaloneFile(inputFile)
 		default:
 			Usage()
 		}
@@ -41,8 +57,9 @@ func Version() {
 func Usage() {
 	fmt.Println("Usage:", filepath.Base(os.Args[0]), "[options]")
 	fmt.Println("Options:")
-	fmt.Println("  -v, --version    Print version information and exit")
-	fmt.Println("  -h, --help       Print this message and exit")
+	fmt.Println("  -v, --version    		Print version information and exit")
+	fmt.Println("  -h, --help       		Print this message and exit")
+	fmt.Println("  -s, --standalone <file>	Create a standalone HTML file")
 	os.Exit(0)
 }
 
@@ -168,6 +185,31 @@ func generateWiki() {
 	fmt.Println("Done!")
 }
 
+// generate standalone html file with an inline stylesheet
+func generateStandaloneFile(input_file string) {
+
+	// check if the file given by path exists
+	if _, err := os.Stat(input_file); os.IsNotExist(err) {
+		fmt.Fprintln(os.Stderr, "Error: file does not exist:", input_file)
+		os.Exit(1)
+	}
+
+		output_file := input_file[:len(input_file)-3] + ".html"
+
+		fmt.Println("Generating standalone HTML file:", output_file)
+		pandocFile(output_file, input_file)
+
+		fmt.Println("Injecting custom HTML into", output_file)
+		contentStr := readFile(output_file)
+		contentStr = injectFaviconInline(contentStr)
+		contentStr = injectStylesheetInkline(contentStr)
+		contentStr = injectFooter(contentStr)
+
+		writeFile(output_file, contentStr, "Generated "+output_file, "html inject")
+
+
+}
+
 func writeFile(path string, content string, success_msg string, error_msg string) {
 
 	err := os.WriteFile(path, []byte(content), 0644)
@@ -253,6 +295,26 @@ func injectFavicon(content string) string {
 	re := regexp.MustCompile(`(?i)<head[^>]*>`)
 	// Replace it with the <head> tag and the favicon link
 	return re.ReplaceAllString(content, `$0`+favicon)
+}
+
+func injectFaviconInline(content string) string {
+	// Define the favicon link tag with inline SVG
+	favicon := `<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCIgdmlld0JveD0iMCAwIDIwIDE2Ij48dGV4dCB4PSIwIiB5PSIxNCI+8J+TmjwvdGV4dD48L3N2Zz4=">`
+
+	// Use a regex to find the <head> tag
+	re := regexp.MustCompile(`(?i)<head[^>]*>`)
+	// Replace it with the <head> tag and the favicon link
+	return re.ReplaceAllString(content, `$0`+favicon)
+}
+
+func injectStylesheetInkline(content string) string {
+
+	// Define the stylesheet link tag with inline CSS
+	stylesheet := `<style>` + generateStylesheetString() + `</style>`
+
+	// Use a regex to find the <head> tag
+	re := regexp.MustCompile(`<link\s+rel="stylesheet"\s+href="style\.css"\s*/?>`)
+	return re.ReplaceAllString(content, stylesheet)
 }
 
 func injectFooter(content string) string {
