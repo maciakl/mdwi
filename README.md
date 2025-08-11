@@ -10,8 +10,9 @@ Additional command line flags:
 
     Usage: mdwi [options]
     Options:
-      -v, --version    Print version information and exit
-      -h, --help       Print this message and exit
+      -v, --version            Print version information and exit
+      -h, --help               Print this message and exit
+      -s, --standalone <file>  Create a standalone HTML file
 
 ## The Problem
 
@@ -44,6 +45,9 @@ This will create a directory named `_site` and generate HTML version of your not
 
 Mdwi is oppinionated. It will generate a basic `style.css` file for you for styling. You can change it afterwards.
 
+## Standalone Mode
+
+In standalone mode, `mdwi` takes in a file name as an argument, and generates a single HTML file as an output, injecting the stylesheet and the favicon as inline elements. It does not convert any internal links.
 
 ## Dependencies
 
