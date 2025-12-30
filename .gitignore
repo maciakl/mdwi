@@ -4,4 +4,6 @@ mdwi.zip
 mdwi.tgz
 mdwi_*.zip
 mdwi_*.tgz
-test
+test/
+# Added by goreleaser init:
+dist/
