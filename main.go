@@ -15,7 +15,7 @@ import (
 
 )
 
-const version = "0.4.0"
+const version = "0.4.1"
 
 func main() {
 
@@ -119,6 +119,7 @@ func generateWiki() {
 		outputFile := file[:len(file)-3] + ".html"
 		outputPath := filepath.Join("_site", outputFile)
 
+		// convert the markdown file to HTML and write it to the _site directory
 		markdownFile(file, outputPath)
 
 		// add the file to the list
@@ -133,38 +134,7 @@ func generateWiki() {
 	// convert list.md to HTML
 	listOutputFile := "list.html"
 	listOutputPath := filepath.Join("_site", listOutputFile)
-
 	markdownFile("_list.md", listOutputPath)
-
-	// get all html files in the _site directory
-	htmlFiles, err := filepath.Glob(filepath.Join("_site", "*.html"))
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error (html find):", err)
-		os.Exit(1)
-	}
-
-	// iterate over the html files and convert {{Name}} into <a href="Name.html">Name</a>
-	for _, file := range htmlFiles {
-
-		contentStr := readFile(file)
-
-		//re := regexp.MustCompile(`\{\{(\w+)\}\}`)
-		re := regexp.MustCompile(`\{\{([a-zA-Z0-9_ ]+)\}\}`)
-
-		contentStr = re.ReplaceAllStringFunc(contentStr, func(match string) string {
-			name := match[2 : len(match)-2]
-			link := fmt.Sprintf("<a href=\"%s.html\">%s</a>", url.PathEscape(name), name)
-			return link
-		})
-
-		// inject custom HTML into the page
-		contentStr = injectFavicon(contentStr)
-		contentStr = injectNav(contentStr)
-		contentStr = injectFooter(contentStr)
-
-		// write the modified content back to the file
-		writeFile(file, contentStr, "Updated "+file, "html inject")
-	}
 
 	// copy all the image files to the _site directory
 	copyFiles("*.png")
@@ -186,16 +156,6 @@ func generateStandaloneFile(input_file string) {
 
 		fmt.Println("Generating standalone HTML file:", output_file)
 		markdownFile(input_file, output_file)
-
-		fmt.Println("Injecting custom HTML into", output_file)
-		contentStr := readFile(output_file)
-		contentStr = injectFaviconInline(contentStr)
-		contentStr = injectStylesheetInkline(contentStr)
-		contentStr = injectFooter(contentStr)
-
-		writeFile(output_file, contentStr, "Generated "+output_file, "html inject")
-
-
 }
 
 func writeFile(path string, content string, success_msg string, error_msg string) {
@@ -207,17 +167,6 @@ func writeFile(path string, content string, success_msg string, error_msg string
 	} else {
 		fmt.Println(success_msg)
 	}
-}
-
-func readFile(path string) string {
-
-	content, err := os.ReadFile(path)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error (html read):", err)
-		os.Exit(1)
-	}
-
-	return string(content)
 }
 
 func copyFiles(filetype string) {
@@ -247,7 +196,7 @@ func markdownFile(inputPath string, outputPath string) {
 	// Read the markdown file
 	input, err := os.ReadFile(inputPath)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error (markdown read):", err)
+		fmt.Fprintln(os.Stderr, "Error (md read):", err)
 		os.Exit(1)
 	}
 
@@ -268,12 +217,27 @@ func markdownFile(inputPath string, outputPath string) {
 	output := markdown.Render(doc, renderer)
 
 	// inject link to stylesheet before </head>
-	outputStr := string(output)
+	contentStr := string(output)
 	re := regexp.MustCompile(`(?i)</head>`)
-	outputStr = re.ReplaceAllString(outputStr, `<link rel="stylesheet" href="style.css">`+`$0`)
+	contentStr = re.ReplaceAllString(contentStr, `<link rel="stylesheet" href="style.css">`+`$0`)
+
+
+	// find all instances of {{Name}} and replace them with <a href="Name.html">Name</a>
+	reg := regexp.MustCompile(`\{\{([a-zA-Z0-9_ ]+)\}\}`)
+
+	contentStr = reg.ReplaceAllStringFunc(contentStr, func(match string) string {
+		name := match[2 : len(match)-2]
+		link := fmt.Sprintf("<a href=\"%s.html\">%s</a>", url.PathEscape(name), name)
+		return link
+	})
+
+	// inject custom HTML into the page
+	contentStr = injectFavicon(contentStr) // svg favicon
+	contentStr = injectNav(contentStr)     // navigation links
+	contentStr = injectFooter(contentStr)  // footer
 
 	//convert outputStr back to []byte
-	output = []byte(outputStr)
+	output = []byte(contentStr)
 
 	// Write the HTML output to the specified file
 	err = os.WriteFile(outputPath, output, 0644)
