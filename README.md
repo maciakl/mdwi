@@ -49,13 +49,6 @@ Mdwi is oppinionated. It will generate a basic `style.css` file for you for styl
 
 In standalone mode, `mdwi` takes in a file name as an argument, and generates a single HTML file as an output, injecting the stylesheet and the favicon as inline elements. It does not convert any internal links.
 
-## Dependencies
-
-Mdwi uses Pandoc to convert markdown to HTML because it exists, it's mature and works well.
-
-- [Pandoc](https://pandoc.org/) - for converting markdown to HTML
-
-
 ## Installation
 
 
@@ -69,27 +62,24 @@ There are few different ways:
 
 ### Linux
 
-On Linux (requires `wget` & `unzip`, installs to `/usr/local/bin`):
+Use [grab](https://github.com/maciakl/grab):
 
-    p="mdwi" && wget -qN "https://github.com/maciakl/${p}/releases/latest/download/${p}_lin.zip" && unzip -oq ${p}_lin.zip && rm -f ${p}_lin.zip && chmod +x ${p} && sudo mv ${p} /usr/local/bin
+    grab maciakl/mdwi
 
-To uninstall, simply delete it:
+### macOS
 
-    rm -f /usr/local/bin/mdwi
+Use `homebrew`:
+
+    brew tap maciakl/tap
+    brew trust maciakl/tap
+    brew install mdwi
 
 ### Windows
 
-On Windows, this tool is distributed via `scoop` (see [scoop.sh](https://scoop.sh)).
-
- First, you need to add my bucket:
+Use `scoop` (see [scoop.sh](https://scoop.sh)).
 
     scoop bucket add maciak https://github.com/maciakl/bucket
     scoop update
-
- Next simply run:
- 
     scoop install mdwi
-
-If you don't want to use `scoop` you can simply download the executable from the release page and extract it somewhere in your path.
 
 
