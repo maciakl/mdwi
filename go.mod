@@ -2,7 +2,10 @@ module github.com/maciakl/mdwi
 
 go 1.21.0
 
-require github.com/otiai10/copy v1.14.1
+require (
+	github.com/gomarkdown/markdown v0.0.0-20260614204949-e08cff860f76
+	github.com/otiai10/copy v1.14.1
+)
 
 require (
 	github.com/otiai10/mint v1.6.3 // indirect

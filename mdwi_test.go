@@ -171,37 +171,6 @@ func TestStandaloneFlag(t *testing.T) {
 	}
 }
 
-func TestPandocNotInstalled(t *testing.T) {
-	// Create a temporary directory for the test
-	tmpDir, err := os.MkdirTemp("", "test-pandoc")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	// Create a dummy mdwi binary in the temp dir
-	originalBinaryPath, err := filepath.Abs(mdwiBinary)
-	if err != nil {
-		t.Fatalf("Failed to get absolute path of mdwi binary: %v", err)
-	}
-	dummyBinaryPath := filepath.Join(tmpDir, mdwiBinary)
-	copyFile(t, originalBinaryPath, dummyBinaryPath)
-	os.Chmod(dummyBinaryPath, 0755) // make it executable
-
-	// Run the command with a modified PATH that doesn't include pandoc
-	cmd := exec.Command(mdwiBinaryAbsPath)
-	cmd.Dir = tmpDir
-	cmd.Env = []string{"PATH="} // Empty PATH
-	output, err := cmd.CombinedOutput()
-
-	if err == nil {
-		t.Fatalf("mdwi command should have failed without pandoc, but it didn't")
-	}
-	if !strings.Contains(string(output), "Error: pandoc is not installed.") {
-		t.Errorf("Expected error message about pandoc not being installed, but got: %s", string(output))
-	}
-}
-
 func TestInternalLinks(t *testing.T) {
 	// Create a temporary directory for the test
 	tmpDir, err := os.MkdirTemp("", "test-internal-links")

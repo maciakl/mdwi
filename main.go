@@ -4,14 +4,18 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 
 	cp "github.com/otiai10/copy"
+
+	"github.com/gomarkdown/markdown"
+	"github.com/gomarkdown/markdown/html"
+	"github.com/gomarkdown/markdown/parser"
+
 )
 
-const version = "0.3.1"
+const version = "0.4.0"
 
 func main() {
 
@@ -27,10 +31,6 @@ func main() {
 				fmt.Fprintln(os.Stderr, "Error: no input file specified for standalone mode.")
 				os.Exit(1)
 			}
-			if !pandocInstalled() {
-				fmt.Fprintln(os.Stderr, "Error: pandoc is not installed.")
-				os.Exit(1)
-			}
 			inputFile := os.Args[2]
 			if _, err := os.Stat(inputFile); os.IsNotExist(err) {
 				fmt.Fprintln(os.Stderr, "Error: input file does not exist:", inputFile)
@@ -41,10 +41,6 @@ func main() {
 			Usage()
 		}
 	} else {
-		if !pandocInstalled() {
-			fmt.Fprintln(os.Stderr, "Error: pandoc is not installed.")
-			os.Exit(1)
-		}
 		generateWiki()
 	}
 }
@@ -61,14 +57,6 @@ func Usage() {
 	fmt.Println("  -h, --help       		Print this message and exit")
 	fmt.Println("  -s, --standalone <file>	Create a standalone HTML file")
 	os.Exit(0)
-}
-
-func pandocInstalled() bool {
-	_, err := exec.LookPath("pandoc")
-	if err != nil {
-		return false
-	}
-	return true
 }
 
 func generateWiki() {
@@ -125,13 +113,13 @@ func generateWiki() {
 
 	list_txt := "# List of Pages\n\n"
 
-	// iterate over the files and convert each with pandoc
+	// iterate over the files and convert each markdown file to HTML
 	for _, file := range files {
 
 		outputFile := file[:len(file)-3] + ".html"
 		outputPath := filepath.Join("_site", outputFile)
 
-		pandocFile(outputPath, file)
+		markdownFile(file, outputPath)
 
 		// add the file to the list
 		if file != "index.md" {
@@ -146,7 +134,7 @@ func generateWiki() {
 	listOutputFile := "list.html"
 	listOutputPath := filepath.Join("_site", listOutputFile)
 
-	pandocFile(listOutputPath, "_list.md")
+	markdownFile("_list.md", listOutputPath)
 
 	// get all html files in the _site directory
 	htmlFiles, err := filepath.Glob(filepath.Join("_site", "*.html"))
@@ -197,7 +185,7 @@ func generateStandaloneFile(input_file string) {
 		output_file := input_file[:len(input_file)-3] + ".html"
 
 		fmt.Println("Generating standalone HTML file:", output_file)
-		pandocFile(output_file, input_file)
+		markdownFile(input_file, output_file)
 
 		fmt.Println("Injecting custom HTML into", output_file)
 		contentStr := readFile(output_file)
@@ -254,19 +242,48 @@ func copyFiles(filetype string) {
 	}
 }
 
-func pandocFile(outputPath string, file string) {
+func markdownFile(inputPath string, outputPath string) {
 
-	cmd := exec.Command("pandoc", "--standalone", "--toc", "--css=style.css", "--to=html5", "-o", outputPath, file)
-	err := cmd.Run()
-
+	// Read the markdown file
+	input, err := os.ReadFile(inputPath)
 	if err != nil {
-		out, _ := cmd.CombinedOutput()
-		fmt.Fprintln(os.Stderr, "Error (pandoc):", err)
-		fmt.Fprintln(os.Stderr, string(out))
+		fmt.Fprintln(os.Stderr, "Error (markdown read):", err)
+		os.Exit(1)
+	}
+
+	// Create a new markdown parser with extensions
+	extensions := parser.CommonExtensions | parser.AutoHeadingIDs
+	p := parser.NewWithExtensions(extensions)
+
+	// Parse the markdown content
+	doc := markdown.Parse(input, p)
+
+	// Create an HTML renderer with options
+	opts := html.RendererOptions{
+		Flags: html.CommonFlags | html.HrefTargetBlank | html.TOC | html.CompletePage,
+	}
+	renderer := html.NewRenderer(opts)
+
+	// Render the markdown to HTML
+	output := markdown.Render(doc, renderer)
+
+	// inject link to stylesheet before </head>
+	outputStr := string(output)
+	re := regexp.MustCompile(`(?i)</head>`)
+	outputStr = re.ReplaceAllString(outputStr, `<link rel="stylesheet" href="style.css">`+`$0`)
+
+	//convert outputStr back to []byte
+	output = []byte(outputStr)
+
+	// Write the HTML output to the specified file
+	err = os.WriteFile(outputPath, output, 0644)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error (html write):", err)
 		os.Exit(1)
 	} else {
-		fmt.Println("Converted", file, "to", outputPath)
+		fmt.Println("Converted", inputPath, "to", outputPath)
 	}
+
 }
 
 func injectNav(content string) string {
@@ -503,7 +520,7 @@ footer {
 .server { color:#7799bb; }
 .error { color:#AA0000; }
 
-#TOC {
+nav {
      margin-top: 2em;
      position: absolute;
      left: 50px;
@@ -511,12 +528,12 @@ footer {
      font-size: 16px;
 }
 
-#TOC li {
+nav li {
     padding: 0;
     margin: 0
 }
 
-#TOC ul {
+nav ul {
     margin-top: 0;
     margin-bottom: 0;
     padding-left: 15px;
@@ -524,7 +541,7 @@ footer {
 }
 
 @media print {
-    #TOC {
+    nav {
         display: none !important;
     }
 
@@ -565,7 +582,7 @@ footer {
 }
 
 @media (max-width: 1100px) { 
-    #TOC {
+    nav {
         margin-top: 2em;
         left: 0;
         position: relative;
