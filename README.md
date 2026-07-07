@@ -44,6 +44,10 @@ This is an simple tool that does 1-4, albeit simply.
 - To link from `index.md` to `foo.md` use the following wiki-like syntax `{{foo}}`
 - Run `mdwi` in your notes folder to generate HTML
 - HTML files will be generated in a `_site` subdirectory, all image files will be copied there too
+- The generated files will contain a sidebar containing:
+  - A table of contents generated from the headings
+  - Link back to the entry page
+  - Link to a generated list with links to all pages
 
 ### Wiki Style Links
 
@@ -79,6 +83,11 @@ As of 0.4.3, if the file contained standard markdown image tags, these images wi
 As such, this file is completely self contained.
 
 Note: wiki style links will be converted to HTML links, but the linked files will not be converted or inlined.
+
+## Output Example
+
+<img width="784" height="955" alt="Screenshot 2026-07-07 012347" src="https://github.com/user-attachments/assets/6fa87b05-a4d0-4576-b9c1-5eaa386ab779" />
+
 
 ## Installation
 
