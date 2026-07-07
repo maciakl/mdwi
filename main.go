@@ -140,7 +140,7 @@ func generateWiki() {
 		outputPath := filepath.Join("_site", outputFile)
 
 		// convert the markdown file to HTML and write it to the _site directory
-		markdownFile(file, outputPath)
+		markdownFile(file, outputPath, false)
 
 		// add the file to the list
 		if file != "index.md" {
@@ -155,7 +155,7 @@ func generateWiki() {
 	// convert list.md to HTML
 	listOutputFile := "list.html"
 	listOutputPath := filepath.Join("_site", listOutputFile)
-	markdownFile(listInputPath, listOutputPath)
+	markdownFile(listInputPath, listOutputPath, false)
 
 	// copy all the image files to the _site directory
 	copyFiles("*.png")
@@ -178,7 +178,7 @@ func generateStandaloneFile(input_file string) {
 		output_file := input_file[:len(input_file)-3] + ".html"
 
 		fmt.Println("Generating standalone HTML file:", output_file)
-		markdownFile(input_file, output_file)
+		markdownFile(input_file, output_file, true)
 }
 
 func writeFile(path string, content string, success_msg string, error_msg string) {
@@ -214,7 +214,7 @@ func copyFiles(filetype string) {
 	}
 }
 
-func markdownFile(inputPath string, outputPath string) {
+func markdownFile(inputPath string, outputPath string, inline bool) {
 
 	// Read the markdown file
 	input, err := os.ReadFile(inputPath)
@@ -239,10 +239,17 @@ func markdownFile(inputPath string, outputPath string) {
 	// Render the markdown to HTML
 	output := markdown.Render(doc, renderer)
 
-	// inject link to stylesheet before </head>
 	contentStr := string(output)
-	re := regexp.MustCompile(`(?i)</head>`)
-	contentStr = re.ReplaceAllString(contentStr, `<link rel="stylesheet" href="style.css">`+`$0`)
+
+	// inject stylesheet before </head>
+	if inline {
+		// inline stylesheet
+		contentStr = injectStylesheetInline(contentStr)
+	} else {
+		// link to external stylesheet
+		re := regexp.MustCompile(`(?i)</head>`)
+		contentStr = re.ReplaceAllString(contentStr, `<link rel="stylesheet" href="style.css">`+`$0`)
+	}
 
 
 	// find all instances of {{Name}} and replace them with <a href="Name.html">Name</a>
@@ -255,7 +262,12 @@ func markdownFile(inputPath string, outputPath string) {
 	})
 
 	// inject custom HTML into the page
-	contentStr = injectFavicon(contentStr) // svg favicon
+	if inline {
+		contentStr = injectFaviconInline(contentStr) // inline svg favicon
+	} else {
+		contentStr = injectFavicon(contentStr) // link to external svg favicon file
+	}
+
 	contentStr = injectNav(contentStr)     // navigation links
 	contentStr = injectFooter(contentStr)  // footer
 
@@ -311,14 +323,14 @@ func injectFaviconInline(content string) string {
 	return re.ReplaceAllString(content, `$0`+favicon)
 }
 
-func injectStylesheetInkline(content string) string {
+func injectStylesheetInline(content string) string {
 
 	// Define the stylesheet link tag with inline CSS
 	stylesheet := `<style>` + generateStylesheetString() + `</style>`
 
-	// Use a regex to find the <head> tag
-	re := regexp.MustCompile(`<link\s+rel="stylesheet"\s+href="style\.css"\s*/?>`)
-	return re.ReplaceAllString(content, stylesheet)
+	// inject stylesheet before </head>
+	re := regexp.MustCompile(`(?i)</head>`)
+	return re.ReplaceAllString(content, stylesheet+`$0`)
 }
 
 func injectFooter(content string) string {
