@@ -164,6 +164,8 @@ func generateWiki() {
 	// copy all the image files to the _site directory
 	copyFiles("*.png")
 	copyFiles("*.jpg")
+	copyFiles("*.gif")
+	copyFiles("*.svg")
 
 	removeDir("_tmp") // remove _tmp directory
 
@@ -252,6 +254,7 @@ func markdownFile(inputPath string, outputPath string, inline bool) {
 	}
 
 
+
 	// find all instances of {{Name}} and replace them with <a href="Name.html">Name</a>
 	reg := regexp.MustCompile(`\{\{([a-zA-Z0-9_ ]+)\}\}`)
 
@@ -273,8 +276,10 @@ func markdownFile(inputPath string, outputPath string, inline bool) {
 		contentStr = injectNav(contentStr)
 	}
 
-	contentStr = injectFooter(contentStr)  // footer
+	// inject footer
+	contentStr = injectFooter(contentStr)
 
+	contentStr = addMainTags(contentStr)
 
 	if inline {
 		// inline images
@@ -293,6 +298,19 @@ func markdownFile(inputPath string, outputPath string, inline bool) {
 		fmt.Println("Converted", inputPath, "to", outputPath)
 	}
 
+}
+
+func addMainTags(content string) string {
+
+	// add <main> right after </nav>
+	re := regexp.MustCompile(`(?i)</nav>`)
+	content = re.ReplaceAllString(content, `$0`+`<main>`)
+
+	// add </main> right before <footer>
+	re = regexp.MustCompile(`(?i)<footer>`)
+	content = re.ReplaceAllString(content, `</main>`+`$0`)
+
+	return content
 }
 
 func inlineImages(content string) string {
@@ -360,9 +378,9 @@ func injectNav(content string) string {
 
     <h4>Table of Contents</h4>`
 
-	// Use a regex to find the <body> tag
+	// Use a regex to find the <nav> tag
 	re := regexp.MustCompile(`(?i)<nav[^>]*>`)
-	// Replace it with the <body> tag and the SVG icon
+	// Replace it with the <nav> tag and the SVG icon
 	return re.ReplaceAllString(content, `$0`+homeIconSVG)
 }
 
@@ -424,10 +442,51 @@ func generateStylesheetString() string {
 
 body {
     font-family: "Avenir Next", Helvetica, Arial, sans-serif;
-    padding:1em;
-    margin:auto;
-    max-width:42em;
+	margin: 2vw;
     background:#fefefe;
+
+	display: grid;
+	grid-template-columns: 1fr 3fr;
+	grid-template-rows: 1fr auto;
+	gap: 1vw;
+	padding: 1vw;
+}
+
+main {
+	grid-column: 2;
+	grid-row: 1;
+	max-width: 50vw;
+}
+
+nav {
+	grid-column: 1;
+	grid-row: 1;
+	position: sticky;
+	align-self: start;
+	font-size: 16px;
+}
+
+nav li {
+    padding: 0;
+    margin: 0
+}
+
+nav ul {
+    margin-top: 0;
+    margin-bottom: 0;
+    padding-left: 15px;
+
+}
+
+footer {
+	grid-column: 2;
+	grid-row: 2;
+
+    font-size: 10px;
+    margin-top: 1vw;
+    border-top: 1px solid gray;
+    text-align: right;
+	max-width: 50vw;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -569,12 +628,6 @@ figcaption {
     color: darkGray;
 }
 
-footer {
-    font-size: 10px;
-    margin-top: 10em;
-    border-top: 1px solid gray;
-    text-align: right;
-}
 
 #ws { background-color: #f8f8f8; }
 
@@ -582,25 +635,6 @@ footer {
 .server { color:#7799bb; }
 .error { color:#AA0000; }
 
-nav {
-     margin-top: 2em;
-     position: absolute;
-     left: 50px;
-     width: 200px;
-     font-size: 16px;
-}
-
-nav li {
-    padding: 0;
-    margin: 0
-}
-
-nav ul {
-    margin-top: 0;
-    margin-bottom: 0;
-    padding-left: 15px;
-
-}
 
 @media print {
     nav {
