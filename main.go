@@ -17,7 +17,7 @@ import (
 
 )
 
-const version = "0.4.4"
+const version = "0.4.5"
 
 func main() {
 
@@ -446,7 +446,7 @@ body {
     background:#fefefe;
 
 	display: grid;
-	grid-template-columns: 1fr 3fr;
+	grid-template-columns: 1fr 3fr 1fr;
 	grid-template-rows: 1fr auto;
 	gap: 1vw;
 	padding: 1vw;
@@ -455,12 +455,12 @@ body {
 main {
 	grid-column: 2;
 	grid-row: 1;
-	max-width: 50vw;
 }
 
 nav {
 	grid-column: 1;
 	grid-row: 1;
+	top: 0;
 	position: sticky;
 	align-self: start;
 	font-size: 16px;
@@ -486,7 +486,6 @@ footer {
     margin-top: 1vw;
     border-top: 1px solid gray;
     text-align: right;
-	max-width: 50vw;
 }
 
 h1, h2, h3, h4, h5, h6 {
