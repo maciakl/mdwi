@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/url"
+	"strings"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -131,7 +132,9 @@ func generateWiki() {
 		os.Exit(1)
 	}
 
-	list_txt := "# List of Pages\n\n"
+	var list_builder strings.Builder
+
+	list_builder.WriteString("# List of Pages\n\n")
 
 	// iterate over the files and convert each markdown file to HTML
 	for _, file := range files {
@@ -144,13 +147,13 @@ func generateWiki() {
 
 		// add the file to the list
 		if file != "index.md" {
-			list_txt += fmt.Sprintf("- [%s](%s)\n", file[:len(file)-3], url.PathEscape(outputFile))
+			fmt.Fprintf(&list_builder, "- [%s](%s)\n", file[:len(file)-3], url.PathEscape(outputFile))
 		}
 	}
 
 	// write the list to list.md
 	listInputPath := filepath.Join("_tmp", "list.md")
-	writeFile(listInputPath, list_txt, "Created list.md", "list write")
+	writeFile(listInputPath, list_builder.String(), "Created _tmp/list.md", "list write")
 
 	// convert list.md to HTML
 	listOutputFile := "list.html"
@@ -232,7 +235,7 @@ func markdownFile(inputPath string, outputPath string, inline bool) {
 
 	// Create an HTML renderer with options
 	opts := html.RendererOptions{
-		Flags: html.CommonFlags | html.HrefTargetBlank | html.TOC | html.CompletePage,
+		Flags: html.CommonFlags | html.TOC | html.CompletePage,
 	}
 	renderer := html.NewRenderer(opts)
 

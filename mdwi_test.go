@@ -223,14 +223,3 @@ func TestInternalLinks(t *testing.T) {
 	}
 }
 
-
-func copyFile(t *testing.T, src, dst string) {
-	data, err := os.ReadFile(src)
-	if err != nil {
-		t.Fatalf("Failed to read file %s: %v", src, err)
-	}
-	err = os.WriteFile(dst, data, 0644)
-	if err != nil {
-		t.Fatalf("Failed to write file %s: %v", dst, err)
-	}
-}
