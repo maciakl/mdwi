@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"encoding/base64"
 
 	cp "github.com/otiai10/copy"
 
@@ -16,7 +17,7 @@ import (
 
 )
 
-const version = "0.4.2"
+const version = "0.4.3"
 
 func main() {
 
@@ -172,13 +173,9 @@ func generateWiki() {
 // generate standalone html file with an inline stylesheet
 func generateStandaloneFile(input_file string) {
 
-	// check if the file given by path exists
-	if _, err := os.Stat(input_file); os.IsNotExist(err) {
-		fmt.Fprintln(os.Stderr, "Error: file does not exist:", input_file)
-		os.Exit(1)
-	}
+		makeDir("_site")  // create _site directory
 
-		output_file := input_file[:len(input_file)-3] + ".html"
+		output_file := filepath.Join("_site", "index.html")
 
 		fmt.Println("Generating standalone HTML file:", output_file)
 		markdownFile(input_file, output_file, true)
@@ -271,8 +268,18 @@ func markdownFile(inputPath string, outputPath string, inline bool) {
 		contentStr = injectFavicon(contentStr) // link to external svg favicon file
 	}
 
-	contentStr = injectNav(contentStr)     // navigation links
+	// inject navigation links if not inline
+	if !inline {
+		contentStr = injectNav(contentStr)
+	}
+
 	contentStr = injectFooter(contentStr)  // footer
+
+
+	if inline {
+		// inline images
+		contentStr = inlineImages(contentStr)
+	}
 
 	//convert outputStr back to []byte
 	output = []byte(contentStr)
@@ -286,6 +293,59 @@ func markdownFile(inputPath string, outputPath string, inline bool) {
 		fmt.Println("Converted", inputPath, "to", outputPath)
 	}
 
+}
+
+func inlineImages(content string) string {
+
+	fmt.Println("Inlining images...")
+
+	// inline images by converting them to base64 and replacing the src attribute
+	regImg := regexp.MustCompile(`(?i)<img\s+[^>]*src="([^"]+)"[^>]*>`)
+
+	contentStr := regImg.ReplaceAllStringFunc(content, func(match string) string {
+		// extract the src attribute value
+		submatches := regImg.FindStringSubmatch(match)
+		if len(submatches) < 2 {
+			return match // no src found, return original match
+		}
+		imgPath := submatches[1]
+
+		fmt.Println("Found image:", imgPath)
+
+		// read the image file
+		imgData, err := os.ReadFile(imgPath)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error (image read):", err)
+			return match // return original match if error occurs
+		}
+
+		// determine the image MIME type based on the file extension
+		var mimeType string
+		switch strings.ToLower(filepath.Ext(imgPath)) {
+		case ".png":
+			mimeType = "image/png"
+		case ".jpg", ".jpeg":
+			mimeType = "image/jpeg"
+		case ".gif":
+			mimeType = "image/gif"
+		case ".svg":
+			mimeType = "image/svg+xml"
+		default:
+			mimeType = "application/octet-stream" // fallback MIME type
+		}
+
+		// convert the image data to base64
+		base64Data := base64.StdEncoding.EncodeToString(imgData)
+
+		// create the new src attribute value
+		newSrc := fmt.Sprintf("data:%s;base64,%s", mimeType, base64Data)
+
+		// replace the src attribute in the original match with the new src
+		newMatch := strings.Replace(match, imgPath, newSrc, 1)
+		return newMatch
+	})
+
+	return contentStr
 }
 
 func injectNav(content string) string {
