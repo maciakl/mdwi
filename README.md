@@ -44,8 +44,12 @@ This is an simple tool that does 1-4, albeit simply.
 - To link from `index.md` to `foo.md` use the following wiki-like syntax `{{foo}}`
 - Run `mdwi` in your notes folder to generate HTML
 - HTML files will be generated in a `_site` subdirectory, all image files will be copied there too
+- The generated files will contain a sidebar containing:
+  - A table of contents generated from the headings
+  - Link back to the entry page
+  - Link to a generated list with links to all pages
 
-## Wiki Style Links
+### Wiki Style Links
 
 The files are linked together using wiki style links. If you have a file called `foo.md` and you want to link to it from another file, you can use the following syntax:
 
@@ -55,7 +59,7 @@ This will be seamlessly converted to:
 
     <a href="foo.html">foo</a>
 
-## Using Images
+### Using Images
 
 If you want to use images, just dump them in the same directory as your markdown files. Link them using standard markdown syntax:
 
@@ -65,11 +69,25 @@ Once you run `mdwi` all the images will be copied to the `_site` directory.
 
 Mdwi is oppinionated. It will generate a basic `style.css` file for you for styling. You can change it afterwards.
 
-## Standalone Mode
+### Standalone Mode
 
-In standalone mode, `mdwi` takes in a file name as an argument, and generates a single HTML file as an output, injecting the stylesheet and the favicon as inline elements. It does not convert any internal links.
+In standalone mode, `mdwi` takes in a file name as an argument, and generates a single `index.html` file in the `_site` subdirectory as an output.
 
-Note: images will not be inlined.
+The output file contains:
+
+- Inlined css stylesheet
+- Inlined SVG favicon
+
+As of 0.4.3, if the file contained standard markdown image tags, these images will be converted to base64 and inlined as well.
+
+As such, this file is completely self contained.
+
+Note: wiki style links will be converted to HTML links, but the linked files will not be converted or inlined.
+
+## Output Example
+
+<img width="784" height="955" alt="Screenshot 2026-07-07 012347" src="https://github.com/user-attachments/assets/6fa87b05-a4d0-4576-b9c1-5eaa386ab779" />
+
 
 ## Installation
 
