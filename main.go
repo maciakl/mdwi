@@ -15,7 +15,7 @@ import (
 
 )
 
-const version = "0.4.1"
+const version = "0.4.2"
 
 func main() {
 
@@ -59,38 +59,58 @@ func Usage() {
 	os.Exit(0)
 }
 
-func generateWiki() {
+// check if a directory exists, if not create it, if it does exist, delete it and re-create it
+func makeDir(path string) {
 
-	fmt.Println("Generating wiki using mdwi version", version, "...")
-
-	// check if a _site directory exists
-	_, err := os.Stat("_site")
+	_, err := os.Stat(path)
 	if os.IsNotExist(err) {
-		// create the _site directory
-		err := os.Mkdir("_site", 0755)
+		// create the directory
+		err := os.Mkdir(path, 0755)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error (mkdir):", err)
 			os.Exit(1)
 		}
-		fmt.Println("Created _site directory")
+		fmt.Println("Created", path, "directory")
 	} else if err != nil {
 		fmt.Fprintln(os.Stderr, "Error (dir check):", err)
 		os.Exit(1)
 	} else {
-		// delete the _site directory and re-create it
-		err := os.RemoveAll("_site")
+		// delete the directory and re-create it
+		err := os.RemoveAll(path)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error (dir remove):", err)
 			os.Exit(1)
 		}
-		err = os.Mkdir("_site", 0755)
+		err = os.Mkdir(path, 0755)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error (mkdir):", err)
 			os.Exit(1)
 		} else {
-			fmt.Println("Removed and re-created _site directory")
+			fmt.Println("Removed and re-created", path, "directory")
 		}
 	}
+}
+
+func removeDir(path string) {
+
+	_, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return
+	}
+
+	_ = os.RemoveAll(path)
+	if err == nil {
+		fmt.Println("Removed", path, "directory")
+	}
+}
+
+
+func generateWiki() {
+
+	fmt.Println("Generating wiki using mdwi version", version, "...")
+
+	makeDir("_site")  // create _site directory
+	makeDir("_tmp")   // create _tmp directory
 
 	// write the default stylesheet to _site/style.css
 	stylesheet := generateStylesheetString()
@@ -129,16 +149,19 @@ func generateWiki() {
 	}
 
 	// write the list to list.md
-	writeFile("_list.md", list_txt, "Created _list.md", "list write")
+	listInputPath := filepath.Join("_tmp", "list.md")
+	writeFile(listInputPath, list_txt, "Created list.md", "list write")
 
 	// convert list.md to HTML
 	listOutputFile := "list.html"
 	listOutputPath := filepath.Join("_site", listOutputFile)
-	markdownFile("_list.md", listOutputPath)
+	markdownFile(listInputPath, listOutputPath)
 
 	// copy all the image files to the _site directory
 	copyFiles("*.png")
 	copyFiles("*.jpg")
+
+	removeDir("_tmp") // remove _tmp directory
 
 	fmt.Println("Done!")
 }
